@@ -71,9 +71,17 @@ function App() {
   const [isAddJobOpen, setIsAddJobOpen] = useState(false);
   const jobListRef = useRef();
 
-  const handleJobAdded = () => {
-    // Refresh the job list
-    jobListRef.current?.refresh();
+  const handleJobAdded = (job, page) => {
+    // Refresh the job list and navigate to the page where the new job is located
+    if (jobListRef.current) {
+      // Set the page to where the new job is located
+      jobListRef.current.setPage(page);
+
+      // Then refresh the job list
+      setTimeout(() => {
+        jobListRef.current.refresh();
+      }, 100); // Small delay to ensure pagination is set before fetching
+    }
     setIsAddJobOpen(false);
   };
 

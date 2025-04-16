@@ -12,6 +12,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from models import Base, Job
+from datetime import datetime
 
 # ---------- LOAD ENV ----------
 load_dotenv()
@@ -92,7 +93,11 @@ def scrape_jobs():
                     company = card.find_element(By.CLASS_NAME, "Job_job-card__company__7T9qY").text
                     location_links = card.find_elements(By.CLASS_NAME, "Job_job-card__location__bq7jX")
                     locations = ", ".join([loc.text for loc in location_links])
-                    tags = ", ".join([tag.text for tag in card.find_elements(By.CLASS_NAME, "Job_job-card__location__bq7jX")])
+
+                    # Fix tags scraping
+                    tag_elements = card.find_elements(By.CLASS_NAME, "Job_job-card__tag__YgDAV")
+                    tags = ", ".join([tag.text.strip() for tag in tag_elements if tag.text.strip()])
+
                     date_posted = card.find_element(By.CLASS_NAME, "Job_job-card__posted-on__NCZaJ").text
                     link = card.find_element(By.CLASS_NAME, "Job_job-page-link__a5I5g").get_attribute("href")
                     logo_img = card.find_element(By.TAG_NAME, "img").get_attribute("src")
@@ -110,7 +115,8 @@ def scrape_jobs():
                         tags=tags,
                         date_posted=date_posted,
                         link=full_link,
-                        logo=logo_img
+                        logo=logo_img,
+                        created_at=datetime.utcnow()
                     )
                     session.add(job)
                     count += 1

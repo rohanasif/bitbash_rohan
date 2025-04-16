@@ -6,6 +6,8 @@ export const api = {
   // Get all jobs with optional filters and pagination
   getJobs: async (filters = {}, page = 1, perPage = 10) => {
     const params = new URLSearchParams();
+
+    // Add filter parameters
     if (filters.location) params.append("location", filters.location);
     if (filters.company) params.append("company", filters.company);
     if (filters.job_type) params.append("job_type", filters.job_type);
@@ -14,8 +16,13 @@ export const api = {
     params.append("page", page);
     params.append("per_page", perPage);
 
-    const response = await axios.get(`${API_URL}/jobs`, { params });
-    return response.data;
+    try {
+      const response = await axios.get(`${API_URL}/jobs`, { params });
+      return response.data;
+    } catch (error) {
+      console.error("API error:", error);
+      throw error;
+    }
   },
 
   // Create a new job

@@ -20,6 +20,7 @@ import {
   FormControl,
   InputLabel,
   Select,
+  Button,
 } from "@mui/material";
 import JobCard from "./JobCard";
 import { api } from "../services/api";
@@ -27,6 +28,7 @@ import { api } from "../services/api";
 const JobList = forwardRef((props, ref) => {
   const [jobs, setJobs] = useState([]);
   const [filters, setFilters] = useState({});
+  const [appliedFilters, setAppliedFilters] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [pagination, setPagination] = useState({
@@ -39,13 +41,25 @@ const JobList = forwardRef((props, ref) => {
   const fetchJobs = useCallback(async () => {
     try {
       setLoading(true);
+
       const data = await api.getJobs(
-        filters,
+        appliedFilters,
         pagination.page,
         pagination.perPage
       );
-      setJobs(data.jobs);
-      setPagination(data.pagination);
+
+      // Handle empty job list
+      if (!data.jobs || data.jobs.length === 0) {
+        setJobs([]);
+      } else {
+        setJobs(data.jobs);
+      }
+
+      setPagination((prev) => ({
+        ...prev,
+        total: data.pagination.total,
+        totalPages: data.pagination.total_pages,
+      }));
       setError(null);
     } catch (err) {
       setError("Failed to fetch jobs");
@@ -53,33 +67,43 @@ const JobList = forwardRef((props, ref) => {
     } finally {
       setLoading(false);
     }
-  }, [filters, pagination.page, pagination.perPage]);
+  }, [appliedFilters, pagination.page, pagination.perPage]);
 
+  // Effect for initial load and pagination changes
   useEffect(() => {
     fetchJobs();
-  }, [fetchJobs]);
+  }, [pagination.page, pagination.perPage, fetchJobs]);
 
-  // Expose the fetchJobs function to parent components
+  // Expose functions to parent components
   useImperativeHandle(ref, () => ({
     refresh: fetchJobs,
+    resetPagination: () => {
+      setPagination((prev) => ({ ...prev, page: 1 }));
+    },
+    setPage: (page) => {
+      setPagination((prev) => ({ ...prev, page }));
+    },
   }));
 
   const handleDelete = async (id) => {
     try {
       await api.deleteJob(id);
-      setJobs((prevJobs) => prevJobs.filter((job) => job.id !== id));
-      fetchJobs();
+      fetchJobs(); // Refresh the list after deletion
     } catch (err) {
       console.error("Error deleting job:", err);
     }
   };
 
   const handleFilterChange = (field) => (event) => {
+    const value = event.target.value;
     setFilters((prev) => ({
       ...prev,
-      [field]: event.target.value,
+      [field]: value,
     }));
-    // Reset to first page when filters change
+  };
+
+  const handleApplyFilters = () => {
+    setAppliedFilters(filters);
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
@@ -91,32 +115,9 @@ const JobList = forwardRef((props, ref) => {
     setPagination((prev) => ({
       ...prev,
       perPage: event.target.value,
-      page: 1,
+      page: 1, // Reset to first page when changing items per page
     }));
   };
-
-  if (loading) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "200px",
-        }}
-      >
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert severity="error" sx={{ mt: 2 }}>
-        {error}
-      </Alert>
-    );
-  }
 
   return (
     <Box>
@@ -131,6 +132,7 @@ const JobList = forwardRef((props, ref) => {
           background: "linear-gradient(45deg, #90caf9 30%, #f48fb1 90%)",
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
+          fontSize: { xs: "2rem", md: "2.5rem" },
         }}
       >
         Job Listings
@@ -143,10 +145,12 @@ const JobList = forwardRef((props, ref) => {
           mb: 4,
           backgroundColor: "background.paper",
           borderRadius: 2,
+          border: "1px solid",
+          borderColor: "divider",
         }}
       >
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={4}>
+        <Grid container spacing={3}>
+          <Grid item xs={12} sm={3}>
             <TextField
               fullWidth
               label="Location"
@@ -154,9 +158,18 @@ const JobList = forwardRef((props, ref) => {
               onChange={handleFilterChange("location")}
               variant="outlined"
               size="small"
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  backgroundColor: "background.paper",
+                  height: 40,
+                },
+                "& .MuiInputLabel-root": {
+                  fontSize: "0.875rem",
+                },
+              }}
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={3}>
             <TextField
               fullWidth
               label="Company"
@@ -164,9 +177,18 @@ const JobList = forwardRef((props, ref) => {
               onChange={handleFilterChange("company")}
               variant="outlined"
               size="small"
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  backgroundColor: "background.paper",
+                  height: 40,
+                },
+                "& .MuiInputLabel-root": {
+                  fontSize: "0.875rem",
+                },
+              }}
             />
           </Grid>
-          <Grid item xs={12} sm={4}>
+          <Grid item xs={12} sm={3}>
             <TextField
               fullWidth
               select
@@ -175,16 +197,10 @@ const JobList = forwardRef((props, ref) => {
               onChange={handleFilterChange("job_type")}
               variant="outlined"
               size="small"
-              SelectProps={{
-                MenuProps: {
-                  PaperProps: {
-                    sx: {
-                      minWidth: "200px",
-                    },
-                  },
-                },
-              }}
               sx={{
+                "& .MuiOutlinedInput-root": {
+                  backgroundColor: "background.paper",
+                },
                 "& .MuiSelect-select": {
                   minWidth: "120px",
                 },
@@ -195,12 +211,44 @@ const JobList = forwardRef((props, ref) => {
               <MenuItem value="Part-time">Part-time</MenuItem>
               <MenuItem value="Contract">Contract</MenuItem>
               <MenuItem value="Remote">Remote</MenuItem>
+              <MenuItem value="Internship">Internship</MenuItem>
             </TextField>
+          </Grid>
+          <Grid item xs={12} sm={3}>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={handleApplyFilters}
+              sx={{
+                height: 40,
+                backgroundColor: "primary.main",
+                "&:hover": {
+                  backgroundColor: "primary.dark",
+                },
+              }}
+            >
+              Apply Filters
+            </Button>
           </Grid>
         </Grid>
       </Paper>
 
-      {jobs.length === 0 ? (
+      {loading ? (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: "200px",
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      ) : error ? (
+        <Alert severity="error" sx={{ mt: 2 }}>
+          {error}
+        </Alert>
+      ) : jobs.length === 0 ? (
         <Paper
           elevation={0}
           sx={{
@@ -208,6 +256,8 @@ const JobList = forwardRef((props, ref) => {
             textAlign: "center",
             backgroundColor: "background.paper",
             borderRadius: 2,
+            border: "1px solid",
+            borderColor: "divider",
           }}
         >
           <Typography variant="h6" color="text.secondary">
@@ -216,10 +266,18 @@ const JobList = forwardRef((props, ref) => {
         </Paper>
       ) : (
         <>
-          <Grid container spacing={2}>
+          <Grid container spacing={3}>
             {jobs.map((job) => (
-              <Grid item xs={12} key={job.id}>
-                <JobCard job={job} onDelete={handleDelete} />
+              <Grid item xs={12} sm={6} lg={4} key={job.id}>
+                <Box
+                  sx={{
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
+                >
+                  <JobCard job={job} onDelete={handleDelete} />
+                </Box>
               </Grid>
             ))}
           </Grid>
@@ -228,24 +286,36 @@ const JobList = forwardRef((props, ref) => {
             sx={{
               mt: 4,
               display: "flex",
+              flexDirection: { xs: "column", sm: "row" },
               justifyContent: "space-between",
-              alignItems: "center",
+              alignItems: { xs: "center", sm: "center" },
+              gap: 2,
+              p: 2,
+              backgroundColor: "background.paper",
+              borderRadius: 2,
+              border: "1px solid",
+              borderColor: "divider",
             }}
           >
-            <FormControl size="small" sx={{ minWidth: 120 }}>
-              <InputLabel id="per-page-label">Per Page</InputLabel>
-              <Select
-                labelId="per-page-label"
-                value={pagination.perPage}
-                label="Per Page"
-                onChange={handlePerPageChange}
-              >
-                <MenuItem value={5}>5</MenuItem>
-                <MenuItem value={10}>10</MenuItem>
-                <MenuItem value={20}>20</MenuItem>
-                <MenuItem value={50}>50</MenuItem>
-              </Select>
-            </FormControl>
+            <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+              <FormControl size="small" sx={{ minWidth: 120 }}>
+                <InputLabel id="per-page-label">Per Page</InputLabel>
+                <Select
+                  labelId="per-page-label"
+                  value={pagination.perPage}
+                  label="Per Page"
+                  onChange={handlePerPageChange}
+                  sx={{
+                    backgroundColor: "background.paper",
+                  }}
+                >
+                  <MenuItem value={5}>5</MenuItem>
+                  <MenuItem value={10}>10</MenuItem>
+                  <MenuItem value={20}>20</MenuItem>
+                  <MenuItem value={50}>50</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
 
             <Stack spacing={2} alignItems="center">
               <Pagination
@@ -255,9 +325,32 @@ const JobList = forwardRef((props, ref) => {
                 color="primary"
                 showFirstButton
                 showLastButton
+                siblingCount={1}
+                boundaryCount={1}
+                sx={{
+                  "& .MuiPaginationItem-root": {
+                    color: "text.primary",
+                  },
+                  "& .Mui-selected": {
+                    backgroundColor: "primary.main",
+                    color: "white",
+                    "&:hover": {
+                      backgroundColor: "primary.dark",
+                    },
+                  },
+                }}
               />
               <Typography variant="body2" color="text.secondary">
-                Showing {jobs.length} of {pagination.total} jobs
+                Showing{" "}
+                {jobs.length > 0
+                  ? (pagination.page - 1) * pagination.perPage + 1
+                  : 0}{" "}
+                to{" "}
+                {Math.min(
+                  pagination.page * pagination.perPage,
+                  pagination.total
+                )}{" "}
+                of {pagination.total} jobs
               </Typography>
             </Stack>
           </Box>

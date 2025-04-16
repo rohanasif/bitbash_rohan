@@ -29,13 +29,26 @@ const JobCard = ({ job, onDelete }) => {
         backgroundColor: "background.paper",
         borderRadius: 2,
         transition: "transform 0.2s, box-shadow 0.2s",
+        border: "1px solid",
+        borderColor: "divider",
+        minHeight: 360,
+        display: "flex",
+        flexDirection: "column",
         "&:hover": {
           transform: "translateY(-2px)",
           boxShadow: "0 4px 20px rgba(0, 0, 0, 0.2)",
+          borderColor: "primary.main",
         },
       }}
     >
-      <Box sx={{ position: "relative" }}>
+      <Box
+        sx={{
+          position: "relative",
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         <IconButton
           onClick={handleDelete}
           sx={{
@@ -44,9 +57,12 @@ const JobCard = ({ job, onDelete }) => {
             right: -8,
             backgroundColor: "background.paper",
             boxShadow: "0 2px 4px rgba(0, 0, 0, 0.2)",
+            border: "1px solid",
+            borderColor: "divider",
             "&:hover": {
               backgroundColor: "error.main",
               color: "white",
+              borderColor: "error.main",
             },
           }}
         >
@@ -61,30 +77,54 @@ const JobCard = ({ job, onDelete }) => {
             fontWeight: 600,
             color: "primary.main",
             mb: 2,
+            pr: 4,
+            fontSize: { xs: "1.25rem", md: "1.5rem" },
+            lineHeight: 1.2,
           }}
         >
           {job.title}
         </Typography>
 
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 2, mb: 2 }}>
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            <BusinessIcon sx={{ mr: 1, color: "text.secondary" }} />
-            <Typography variant="subtitle1" color="text.secondary">
+        <Box
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 1,
+            mb: 2,
+            "& > *": {
+              display: "flex",
+              alignItems: "center",
+              backgroundColor: "rgba(144, 202, 249, 0.1)",
+              padding: "4px 12px",
+              borderRadius: "16px",
+              fontSize: "0.875rem",
+            },
+          }}
+        >
+          <Box>
+            <BusinessIcon
+              sx={{ mr: 1, color: "primary.main", fontSize: "1rem" }}
+            />
+            <Typography variant="subtitle2" color="text.primary" noWrap>
               {job.company}
             </Typography>
           </Box>
 
-          <Box sx={{ display: "flex", alignItems: "center" }}>
-            <LocationOnIcon sx={{ mr: 1, color: "text.secondary" }} />
-            <Typography variant="body2" color="text.secondary">
+          <Box>
+            <LocationOnIcon
+              sx={{ mr: 1, color: "primary.main", fontSize: "1rem" }}
+            />
+            <Typography variant="body2" color="text.primary" noWrap>
               {job.location}
             </Typography>
           </Box>
 
           {job.job_type && (
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <WorkIcon sx={{ mr: 1, color: "text.secondary" }} />
-              <Typography variant="body2" color="text.secondary">
+            <Box>
+              <WorkIcon
+                sx={{ mr: 1, color: "primary.main", fontSize: "1rem" }}
+              />
+              <Typography variant="body2" color="text.primary" noWrap>
                 {job.job_type}
               </Typography>
             </Box>
@@ -99,28 +139,44 @@ const JobCard = ({ job, onDelete }) => {
               color: "text.primary",
               mb: 2,
               lineHeight: 1.6,
+              fontSize: "0.95rem",
+              flexGrow: 1,
+              overflow: "hidden",
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
             }}
           >
             {job.description}
           </Typography>
         )}
 
-        {job.tags && (
+        {job.tags && job.tags.trim() && (
           <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 2 }}>
-            {job.tags.split(", ").map((tag) => (
-              <Chip
-                key={tag}
-                label={tag}
-                size="small"
-                sx={{
-                  backgroundColor: "rgba(144, 202, 249, 0.1)",
-                  color: "primary.main",
-                  "&:hover": {
-                    backgroundColor: "rgba(144, 202, 249, 0.2)",
-                  },
-                }}
-              />
-            ))}
+            {job.tags.split(",").map((tag) => {
+              const trimmedTag = tag.trim();
+              return trimmedTag ? (
+                <Chip
+                  key={trimmedTag}
+                  label={trimmedTag}
+                  size="small"
+                  sx={{
+                    backgroundColor: "rgba(144, 202, 249, 0.1)",
+                    color: "primary.main",
+                    border: "1px solid",
+                    borderColor: "primary.main",
+                    fontSize: "0.75rem",
+                    height: 24,
+                    "& .MuiChip-label": {
+                      px: 1.5,
+                    },
+                    "&:hover": {
+                      backgroundColor: "rgba(144, 202, 249, 0.2)",
+                    },
+                  }}
+                />
+              ) : null;
+            })}
           </Box>
         )}
 
@@ -129,13 +185,18 @@ const JobCard = ({ job, onDelete }) => {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            mt: 2,
+            mt: "auto",
+            pt: 2,
+            borderTop: "1px solid",
+            borderColor: "divider",
           }}
         >
           <Typography variant="caption" color="text.secondary">
             {job.date_posted
               ? `Posted: ${job.date_posted}`
-              : `Added: ${format(new Date(job.created_at), "PPP")}`}
+              : job.created_at
+              ? `Added: ${format(new Date(job.created_at), "PPP")}`
+              : "Date not available"}
           </Typography>
 
           {job.url && (
@@ -150,6 +211,9 @@ const JobCard = ({ job, onDelete }) => {
                 textTransform: "none",
                 fontWeight: 600,
                 px: 3,
+                "&:hover": {
+                  backgroundColor: "primary.dark",
+                },
               }}
             >
               Apply Now

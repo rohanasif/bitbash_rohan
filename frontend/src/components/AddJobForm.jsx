@@ -33,8 +33,14 @@ const AddJobForm = ({ open, onClose, onJobAdded }) => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
-      const newJob = await api.createJob(formData);
-      onJobAdded(newJob);
+      const jobData = {
+        ...formData,
+        link: formData.url,
+        date_posted: new Date().toISOString().split("T")[0],
+      };
+
+      const response = await api.createJob(jobData);
+      onJobAdded(response.job, response.page);
       onClose();
       setFormData({
         title: "",
