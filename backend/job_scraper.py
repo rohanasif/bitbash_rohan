@@ -4,13 +4,14 @@ import schedule
 import psycopg2
 import os
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, Column, Integer, String, Text
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from models import Base, Job
 
 # ---------- LOAD ENV ----------
 load_dotenv()
@@ -54,20 +55,6 @@ def create_database():
         conn.close()
     except Exception as e:
         logging.error(f"Error creating DB: {e}")
-
-# ---------- SQLALCHEMY TABLE ----------
-Base = declarative_base()
-
-class Job(Base):
-    __tablename__ = 'jobs'
-    id = Column(Integer, primary_key=True)
-    title = Column(String)
-    company = Column(String)
-    location = Column(String)
-    tags = Column(Text)
-    date_posted = Column(String)
-    link = Column(String)
-    logo = Column(String)
 
 def create_tables():
     engine = create_engine(DATABASE_URL)

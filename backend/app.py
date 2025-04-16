@@ -1,10 +1,10 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 import os
 from dotenv import load_dotenv
+from models import Job, Base
 
 # Load environment variables
 load_dotenv()
@@ -25,32 +25,6 @@ DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST
 engine = create_engine(DATABASE_URL)
 Session = sessionmaker(bind=engine)
 
-# Job model
-class Job:
-    def __init__(self, id, title, company, location, description, salary, job_type, url, tags):
-        self.id = id
-        self.title = title
-        self.company = company
-        self.location = location
-        self.description = description
-        self.salary = salary
-        self.job_type = job_type
-        self.url = url
-        self.tags = tags
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'title': self.title,
-            'company': self.company,
-            'location': self.location,
-            'description': self.description,
-            'salary': self.salary,
-            'job_type': self.job_type,
-            'url': self.url,
-            'tags': self.tags
-        }
-
 # Routes
 @app.route('/api/jobs', methods=['GET'])
 def get_jobs():
@@ -59,7 +33,6 @@ def get_jobs():
         # Get filter parameters
         location = request.args.get('location')
         company = request.args.get('company')
-        job_type = request.args.get('job_type')
 
         # Get pagination parameters
         page = request.args.get('page', 1, type=int)
@@ -71,8 +44,6 @@ def get_jobs():
             query = query.filter(Job.location.ilike(f'%{location}%'))
         if company:
             query = query.filter(Job.company.ilike(f'%{company}%'))
-        if job_type:
-            query = query.filter(Job.job_type == job_type)
 
         # Get total count for pagination
         total_jobs = query.count()
@@ -101,15 +72,13 @@ def create_job():
     try:
         data = request.json
         new_job = Job(
-            id=None,  # Will be set by database
             title=data['title'],
             company=data['company'],
             location=data.get('location', ''),
-            description=data.get('description', ''),
-            salary=data.get('salary', ''),
-            job_type=data.get('job_type', ''),
-            url=data.get('url', ''),
-            tags=data.get('tags', '')
+            tags=data.get('tags', ''),
+            date_posted=data.get('date_posted', ''),
+            link=data.get('link', ''),
+            logo=data.get('logo', '')
         )
         session.add(new_job)
         session.commit()
