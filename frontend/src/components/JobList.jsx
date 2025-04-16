@@ -4,6 +4,7 @@ import {
   useCallback,
   forwardRef,
   useImperativeHandle,
+  memo,
 } from "react";
 import {
   Container,
@@ -25,9 +26,128 @@ import {
 import JobCard from "./JobCard";
 import { api } from "../services/api";
 
+// Separate FilterBar component to prevent unnecessary re-renders
+const FilterBar = memo(({ onApplyFilters }) => {
+  const [localFilters, setLocalFilters] = useState({
+    location: "",
+    company: "",
+    job_type: "",
+  });
+
+  const handleFilterChange = (field) => (event) => {
+    const value = event.target.value;
+    setLocalFilters((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const handleApplyFilters = () => {
+    onApplyFilters(localFilters);
+  };
+
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        p: 3,
+        mb: 4,
+        backgroundColor: "background.paper",
+        borderRadius: 2,
+        border: "1px solid",
+        borderColor: "divider",
+      }}
+    >
+      <Grid container spacing={3}>
+        <Grid item xs={12} sm={3}>
+          <TextField
+            fullWidth
+            label="Location"
+            value={localFilters.location}
+            onChange={handleFilterChange("location")}
+            variant="outlined"
+            size="small"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                backgroundColor: "background.paper",
+                height: 40,
+              },
+              "& .MuiInputLabel-root": {
+                fontSize: "0.875rem",
+              },
+            }}
+          />
+        </Grid>
+        <Grid item xs={12} sm={3}>
+          <TextField
+            fullWidth
+            label="Company"
+            value={localFilters.company}
+            onChange={handleFilterChange("company")}
+            variant="outlined"
+            size="small"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                backgroundColor: "background.paper",
+                height: 40,
+              },
+              "& .MuiInputLabel-root": {
+                fontSize: "0.875rem",
+              },
+            }}
+          />
+        </Grid>
+        <Grid item xs={12} sm={3}>
+          <TextField
+            fullWidth
+            select
+            label="Job Type"
+            value={localFilters.job_type}
+            onChange={handleFilterChange("job_type")}
+            variant="outlined"
+            size="small"
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                backgroundColor: "background.paper",
+              },
+              "& .MuiSelect-select": {
+                minWidth: "120px",
+              },
+            }}
+          >
+            <MenuItem value="">All</MenuItem>
+            <MenuItem value="Full-time">Full-time</MenuItem>
+            <MenuItem value="Part-time">Part-time</MenuItem>
+            <MenuItem value="Contract">Contract</MenuItem>
+            <MenuItem value="Remote">Remote</MenuItem>
+            <MenuItem value="Internship">Internship</MenuItem>
+          </TextField>
+        </Grid>
+        <Grid item xs={12} sm={3}>
+          <Button
+            fullWidth
+            variant="contained"
+            onClick={handleApplyFilters}
+            sx={{
+              height: 40,
+              backgroundColor: "primary.main",
+              "&:hover": {
+                backgroundColor: "primary.dark",
+              },
+            }}
+          >
+            Apply Filters
+          </Button>
+        </Grid>
+      </Grid>
+    </Paper>
+  );
+});
+
+FilterBar.displayName = "FilterBar";
+
 const JobList = forwardRef((props, ref) => {
   const [jobs, setJobs] = useState([]);
-  const [filters, setFilters] = useState({});
   const [appliedFilters, setAppliedFilters] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -94,16 +214,8 @@ const JobList = forwardRef((props, ref) => {
     }
   };
 
-  const handleFilterChange = (field) => (event) => {
-    const value = event.target.value;
-    setFilters((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const handleApplyFilters = () => {
-    setAppliedFilters(filters);
+  const handleApplyFilters = (newFilters) => {
+    setAppliedFilters(newFilters);
     setPagination((prev) => ({ ...prev, page: 1 }));
   };
 
@@ -138,100 +250,7 @@ const JobList = forwardRef((props, ref) => {
         Job Listings
       </Typography>
 
-      <Paper
-        elevation={0}
-        sx={{
-          p: 3,
-          mb: 4,
-          backgroundColor: "background.paper",
-          borderRadius: 2,
-          border: "1px solid",
-          borderColor: "divider",
-        }}
-      >
-        <Grid container spacing={3}>
-          <Grid item xs={12} sm={3}>
-            <TextField
-              fullWidth
-              label="Location"
-              value={filters.location || ""}
-              onChange={handleFilterChange("location")}
-              variant="outlined"
-              size="small"
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  backgroundColor: "background.paper",
-                  height: 40,
-                },
-                "& .MuiInputLabel-root": {
-                  fontSize: "0.875rem",
-                },
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={3}>
-            <TextField
-              fullWidth
-              label="Company"
-              value={filters.company || ""}
-              onChange={handleFilterChange("company")}
-              variant="outlined"
-              size="small"
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  backgroundColor: "background.paper",
-                  height: 40,
-                },
-                "& .MuiInputLabel-root": {
-                  fontSize: "0.875rem",
-                },
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={3}>
-            <TextField
-              fullWidth
-              select
-              label="Job Type"
-              value={filters.job_type || ""}
-              onChange={handleFilterChange("job_type")}
-              variant="outlined"
-              size="small"
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  backgroundColor: "background.paper",
-                },
-                "& .MuiSelect-select": {
-                  minWidth: "120px",
-                },
-              }}
-            >
-              <MenuItem value="">All</MenuItem>
-              <MenuItem value="Full-time">Full-time</MenuItem>
-              <MenuItem value="Part-time">Part-time</MenuItem>
-              <MenuItem value="Contract">Contract</MenuItem>
-              <MenuItem value="Remote">Remote</MenuItem>
-              <MenuItem value="Internship">Internship</MenuItem>
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={3}>
-            <Button
-              fullWidth
-              variant="contained"
-              onClick={handleApplyFilters}
-              sx={{
-                height: 40,
-                backgroundColor: "primary.main",
-                "&:hover": {
-                  backgroundColor: "primary.dark",
-                },
-              }}
-            >
-              Apply Filters
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
+      <FilterBar onApplyFilters={handleApplyFilters} />
 
       {loading ? (
         <Box
