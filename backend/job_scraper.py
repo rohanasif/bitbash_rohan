@@ -20,9 +20,13 @@ POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD")
 DB_NAME = os.getenv("POSTGRES_DB")
 POSTGRES_HOST = os.getenv("POSTGRES_HOST")
 PORT = os.getenv("POSTGRES_PORT")
+TARGET_URL = os.getenv("TARGET_URL")
+SCRAPE_INTERVAL = int(os.getenv("SCRAPE_INTERVAL", 3))  # Default to 3 minutes if not set
+RATE_LIMIT_DELAY = int(os.getenv("RATE_LIMIT_DELAY", 2))  # Default to 2 seconds if not set
 
+# Use DATABASE_URL from env if available, otherwise construct it
+DATABASE_URL = os.getenv("DATABASE_URL") or f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{PORT}/{DB_NAME}"
 POSTGRES_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{PORT}/postgres"
-DATABASE_URL = f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{PORT}/{DB_NAME}"
 
 # ---------- LOGGING ----------
 logging.basicConfig(
@@ -80,33 +84,19 @@ def scrape_jobs():
         options = Options()
         options.add_argument('--headless')
         driver = webdriver.Chrome(options=options)
-        driver.get("https://www.actuarylist.com/")
+        driver.get(TARGET_URL)
 
         total_jobs_scraped = 0
         page_number = 1
 
-        try:
-            # Wait for job cards to appear
-            wait = WebDriverWait(driver, 15)
-            wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "Job_job-card__YgDAV")))
-        except Exception as e:
-            logging.warning(f"No job cards found on the page: {e}")
-            driver.quit()
-            return  # Exit gracefully if no job cards are found
-
         while True:
             logging.info(f"Scraping page {page_number}...")
 
-            try:
-                job_cards = driver.find_elements(By.CLASS_NAME, "Job_job-card__YgDAV")
-                logging.info(f"Found {len(job_cards)} job cards on page {page_number}.")
-            except Exception as e:
-                logging.warning(f"Error finding job cards on page {page_number}: {e}")
-                break  # Exit the loop if we can't find job cards
+            wait = WebDriverWait(driver, 15)
+            wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "Job_job-card__YgDAV")))
 
-            if not job_cards:
-                logging.info(f"No job cards found on page {page_number}. Ending scrape.")
-                break
+            job_cards = driver.find_elements(By.CLASS_NAME, "Job_job-card__YgDAV")
+            logging.info(f"Found {len(job_cards)} job cards on page {page_number}.")
 
             count = 0
             for card in job_cards:
@@ -164,7 +154,7 @@ def scrape_jobs():
                 page_number += 1
 
                 # Wait for the page to load
-                time.sleep(2)
+                time.sleep(RATE_LIMIT_DELAY)
 
             except Exception as e:
                 logging.info(f"No more pages to scrape: {e}")
@@ -177,12 +167,11 @@ def scrape_jobs():
         logging.error(f"Scraping failed: {e}")
     finally:
         session.close()
-        logging.info("Job scraping completed. Scheduler will continue running.")
 
 # ---------- SCHEDULER ----------
 def start_scheduler():
-    logging.info("Starting job scheduler (runs every 3 minutes)...")
-    schedule.every(3).minutes.do(scrape_jobs)
+    logging.info(f"Starting job scheduler (runs every {SCRAPE_INTERVAL} minutes)...")
+    schedule.every(SCRAPE_INTERVAL).minutes.do(scrape_jobs)
     scrape_jobs()  # run immediately on startup
 
     while True:
