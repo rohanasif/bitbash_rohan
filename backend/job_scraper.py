@@ -85,14 +85,28 @@ def scrape_jobs():
         total_jobs_scraped = 0
         page_number = 1
 
+        try:
+            # Wait for job cards to appear
+            wait = WebDriverWait(driver, 15)
+            wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "Job_job-card__YgDAV")))
+        except Exception as e:
+            logging.warning(f"No job cards found on the page: {e}")
+            driver.quit()
+            return  # Exit gracefully if no job cards are found
+
         while True:
             logging.info(f"Scraping page {page_number}...")
 
-            wait = WebDriverWait(driver, 15)
-            wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "Job_job-card__YgDAV")))
+            try:
+                job_cards = driver.find_elements(By.CLASS_NAME, "Job_job-card__YgDAV")
+                logging.info(f"Found {len(job_cards)} job cards on page {page_number}.")
+            except Exception as e:
+                logging.warning(f"Error finding job cards on page {page_number}: {e}")
+                break  # Exit the loop if we can't find job cards
 
-            job_cards = driver.find_elements(By.CLASS_NAME, "Job_job-card__YgDAV")
-            logging.info(f"Found {len(job_cards)} job cards on page {page_number}.")
+            if not job_cards:
+                logging.info(f"No job cards found on page {page_number}. Ending scrape.")
+                break
 
             count = 0
             for card in job_cards:
@@ -163,6 +177,7 @@ def scrape_jobs():
         logging.error(f"Scraping failed: {e}")
     finally:
         session.close()
+        logging.info("Job scraping completed. Scheduler will continue running.")
 
 # ---------- SCHEDULER ----------
 def start_scheduler():
@@ -171,8 +186,13 @@ def start_scheduler():
     scrape_jobs()  # run immediately on startup
 
     while True:
-        schedule.run_pending()
-        time.sleep(1)
+        try:
+            schedule.run_pending()
+            time.sleep(1)
+        except Exception as e:
+            logging.error(f"Scheduler error: {e}")
+            logging.info("Restarting scheduler in 60 seconds...")
+            time.sleep(60)  # Wait a minute before trying again
 
 # ---------- MAIN ----------
 if __name__ == "__main__":
